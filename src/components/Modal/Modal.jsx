@@ -1,29 +1,39 @@
-import { useEffect, useCallback } from 'react';
-import { ModalWindow } from './Modal.Styled';
+import PropTypes from 'prop-types';
+import { useEffect } from 'react';
+import css from './Modal.module.css';
 
-export const Modal = props => {
-  const onModalClick = useCallback(
-    e => {
-      e.preventDefault();
-      if (e.code === 'Escape' || e.type === 'click')
-        props.modalWindowHandler({ pageURL: null });
-    },
-    [props]
-  );
+const Modal = ({ closeModal, url, alt }) => {
   useEffect(() => {
-    window.addEventListener('click', onModalClick);
-    window.addEventListener('keydown', onModalClick);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('click', onModalClick);
-      window.removeEventListener('keydown', onModalClick);
-      document.body.style.overflow = 'unset';
+    const closeEscModal = e => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
     };
-  }, [onModalClick]);
+    window.addEventListener('keydown', closeEscModal);
+    return () => {
+      window.removeEventListener('keydown', closeEscModal);
+    };
+  }, [closeModal]);
+
+  const handleBackDropClick = e => {
+    if (e.currentTarget === e.target) {
+      closeModal();
+    }
+  };
 
   return (
-    <ModalWindow className="overlay" onClick={() => onModalClick()}>
-      <div className="modal">{props.children}</div>
-    </ModalWindow>
+    <div className={css.modal} onClick={handleBackDropClick}>
+      <div className={css.content}>
+        <img src={url} alt={alt} />
+      </div>
+    </div>
   );
+};
+
+export default Modal;
+
+Modal.propTypes = {
+  closeModal: PropTypes.func.isRequired,
+  url: PropTypes.string.isRequired,
+  alt: PropTypes.string.isRequired,
 };

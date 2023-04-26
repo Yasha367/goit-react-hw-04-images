@@ -1,142 +1,58 @@
-import { useState, useEffect, useCallback } from 'react';
-import { FetchUrl } from 'components/Fetch/FetchURL';
-import { GalleryItem } from '../GalleryItem/GalleryItem';
-import { IdleView } from 'components/Views/IdleView';
-import { PendingView } from 'components/Views/PendingView';
-import styled from 'styled-components';
-// import { MdImageSearch } from 'react-icons/md';
-// import { IconContext } from 'react-icons';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
+import css from './ImageGallery.module.css';
 
-const STATUS = {
-  IDLE: 'idle',
-  PENDING: 'pending',
-  REJECTED: 'rejected',
-  RESOLVED: 'resolved',
-};
+import ImageGalleryItem from './ImageGalleryItem/ImageGalleryItem';
+import Button from 'components/Button/Button';
+import Modal from 'components/Modal/Modal';
+import { Loader } from 'components/Loader/Loader';
 
-export const ImageGallery = props => {
-  const [articles, setArticles] = useState(props.articles);
-  const [status, setStatus] = useState(STATUS.IDLE);
-  const [articlesPage, setArticlesPage] = useState(1);
-  const [error, setError] = useState('');
-  const [isLoadMoreEnabled, setIsLoadMoreEnabled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(props.searchQuery);
+const ImageGallery = ({ dataImages, toggleLoader, loadHits, onLoadMore }) => {
+  const [isActive, setIsActive] = useState(false);
+  const [largeImageUrl, setLargeImageUrl] = useState('');
+  const [largeImageAlt, setLargeImageAlt] = useState('');
 
-  useEffect(() => {
-    if (props.searchQuery !== '') {
-      setSearchQuery(props.searchQuery);
-      newSearchInit();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.searchQuery]);
-
-  const newSearchInit = useCallback(() => {
-    setStatus(STATUS.PENDING);
-    if (props.searchQuery.trim() !== '') {
-      FetchUrl(props.searchQuery, articlesPage)
-        .then(data => {
-          if (data.data.total === 0 || data.data.hits.length === 0) {
-            return Promise.reject('No pictures available on your request ((');
-          } else setArticles(data.data.hits);
-          setStatus(STATUS.RESOLVED);
-          setArticlesPage(2);
-          setIsLoadMoreEnabled(
-            data.data.totalHits === [...articles, ...data.data.hits].length
-              ? false
-              : true
-          );
-        })
-        .catch(error => {
-          setStatus(STATUS.REJECTED);
-          setError(error);
-        });
-    } else {
-      alert('Invalid search query');
-      setStatus(STATUS.IDLE);
-    }
-  }, [articles, articlesPage, props.searchQuery]);
-
-  const handleLoadMoreButton = e => {
-    setArticlesPage(articlesPage + 1);
-
-    FetchUrl(searchQuery, articlesPage)
-      .then(data => {
-        if (data.data.total === 0) {
-          return Promise.reject('No data available!');
-        }
-        setArticles([...articles, ...data.data.hits]);
-        setStatus(STATUS.RESOLVED);
-
-        setIsLoadMoreEnabled(
-          data.data.totalHits === [...articles, ...data.data.hits].length
-            ? false
-            : true
-        );
-      })
-      .catch(error => {
-        setStatus(STATUS.REJECTED);
-        setError(error);
-        console.log(error);
-      });
+  const toggleModal = e => {
+    setLargeImageUrl(e.largeImageURL);
+    setLargeImageAlt(e.tags);
+    setIsActive(true);
   };
 
-  const fullViewHandle = (e, picId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const largeImg = articles.find(el => {
-      return el.id === picId;
-    });
-    props.modalWindowHandler(largeImg);
+  const closeModal = () => {
+    setIsActive(false);
   };
 
-  if (status === STATUS.IDLE) {
-    return (
-      <ListContainer>
-        {' '}
-        <IdleView />
-      </ListContainer>
-    );
-  } else if (status === STATUS.PENDING) {
-    return (
-      <ListContainer>
-        <PendingView />;
-      </ListContainer>
-    );
-  } else if (status === STATUS.RESOLVED) {
-    return (
-      <ListContainer>
-        <GalleryItem articles={articles} fullViewHandle={fullViewHandle} />
-        {isLoadMoreEnabled && (
-          <LoadMoreButton
-            type="button"
-            // disabled={isLoadMoreEnabled}
-            onClick={handleLoadMoreButton}
-          >
-            Load More...
-          </LoadMoreButton>
-        )}
-      </ListContainer>
-    );
-  } else if (status === STATUS.REJECTED) {
-    return (
-      <ListContainer>
-        <h1>Something went wrong. {error}</h1>
-      </ListContainer>
-    );
-  }
+  const LoadMore = () => {
+    onLoadMore();
+  };
+
+  return (
+    <>
+      {dataImages[0] && (
+        <ul className={css.galleryList}>
+          <ImageGalleryItem images={dataImages} toggleModal={toggleModal} />
+        </ul>
+      )}
+      {toggleLoader && <Loader />}
+      {loadHits === 12 && (
+        <Button onLoadMore={LoadMore} toggleLoader={toggleLoader} />
+      )}
+      {isActive && (
+        <Modal
+          url={largeImageUrl}
+          alt={largeImageAlt}
+          closeModal={closeModal}
+        />
+      )}
+    </>
+  );
 };
 
-const ListContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  padding-top: 100px;
-  padding-left: 15px;
-  padding-right: 15px;
-  padding-bottom: 25px;
-  margin: 0 auto;
-`;
+export default ImageGallery;
 
-const LoadMoreButton = styled.button`
-  height: 25px;
-  justify-self: center;
-`;
+ImageGallery.prototypes = {
+	dataImages: PropTypes.array.isRequired,
+	toggleLoader: PropTypes.bool.isRequired,
+	loadHits: PropTypes.number.isRequired,
+	onLoadMore: PropTypes.func.isRequired
+}
